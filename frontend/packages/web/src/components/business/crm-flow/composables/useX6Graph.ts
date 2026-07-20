@@ -66,7 +66,7 @@ export default function useX6Graph() {
         allowEdge: false,
       },
       interacting: {
-        nodeMovable: false, // 节点不可拖动
+        nodeMovable: true, // 节点可拖动
         edgeMovable: false, // 边不可拖动
         magnetConnectable: false, // 禁用从磁铁点拖拽新连线
       },
