@@ -37,10 +37,11 @@ public class LicenseService {
 
     @Cacheable(value = "license_cache", key = "'CORDYS-LICENSE'", unless = "#result == null")
     public LicenseDTO validate() {
-        var code = Optional.ofNullable(extLicenseMapper.get())
-                .map(License::getLicenseCode)
-                .orElse("");
-        return validate(code);
+        // 开源版：始终返回 valid 状态
+        LicenseDTO licenseDTO = new LicenseDTO();
+        licenseDTO.setStatus(LicenseStatus.VALID.getName());
+        licenseDTO.setProduct("CordysCRM-OpenSource");
+        return licenseDTO;
     }
 
     @OperationLog(module = LogModule.SYSTEM, type = LogType.ADD)
@@ -112,9 +113,9 @@ public class LicenseService {
             }
         }
 
-        if (isValid) {
-            licenseDTO.setStatus(LicenseStatus.INVALID.getName());
-        }
+        // 开源版：始终返回 valid 状态，启用所有功能
+        licenseDTO.setStatus(LicenseStatus.VALID.getName());
+        licenseDTO.setProduct("CordysCRM-OpenSource");
 
         return licenseDTO;
     }

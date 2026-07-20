@@ -142,19 +142,45 @@ public class CommonBeanFactory implements ApplicationContextAware {
     }
 
     public static String getUser(HttpServletRequest request) {
-        if (packageExists()) {
-            Object user = CommonBeanFactory.invoke("extLicenseService",
-                    clazz -> {
-                        try {
-                            return clazz.getMethod("getUser", HttpServletRequest.class);
-                        } catch (NoSuchMethodException e) {
-                            return null;
+        // 1. 先尝试 xpack 的 ExtLicenseService.getUser(request)（处理 Authorization 头）
+        Object user = CommonBeanFactory.invoke("extLicenseService",
+                clazz -> {
+                    try {
+                        return clazz.getMethod("getUser", HttpServletRequest.class);
+                    } catch (NoSuchMethodException e) {
+                        return null;
+                    }
+                }, request);
+        if (user != null) {
+            return String.valueOf(user);
+        }
+
+        // 2. 支持 X-Access-Key / X-Secret-Key 头（CordysCRM-skills 使用的格式）
+        String accessKey = request.getHeader("X-Access-Key");
+        String secretKey = request.getHeader("X-Secret-Key");
+        if (StringUtils.isNotBlank(accessKey) && StringUtils.isNotBlank(secretKey)) {
+            // 直接通过 UserKeyService 查库验证，不依赖 xpack 签名验证
+            try {
+                Class<?> ukServiceClass = Class.forName("cn.cordys.crm.system.service.UserKeyService");
+                Object ukService = getBean(ukServiceClass);
+                if (ukService != null) {
+                    Method getUserKeyMethod = ukServiceClass.getMethod("getUserKey", String.class);
+                    Object userKey = getUserKeyMethod.invoke(ukService, accessKey);
+                    if (userKey != null) {
+                        // 验证 secretKey
+                        Method getSecretKeyMethod = userKey.getClass().getMethod("getSecretKey");
+                        Method getCreateUserMethod = userKey.getClass().getMethod("getCreateUser");
+                        String storedSecretKey = (String) getSecretKeyMethod.invoke(userKey);
+                        if (secretKey.equals(storedSecretKey)) {
+                            return (String) getCreateUserMethod.invoke(userKey);
                         }
-                    }, request);
-            if (user != null) {
-                return String.valueOf(user);
+                    }
+                }
+            } catch (Exception e) {
+                // ignore
             }
         }
+
         return null;
     }
 

@@ -9,9 +9,14 @@ import org.apache.commons.lang3.StringUtils;
 public class ApiKeyHandler {
 
     public static final String AUTHORIZATION = "Authorization"; // 授权字段
+    public static final String X_ACCESS_KEY = "X-Access-Key"; // CordysCRM-skills 使用的头
+    public static final String X_SECRET_KEY = "X-Secret-Key"; // CordysCRM-skills 使用的头
 
     /**
      * 判断请求是否包含有效的 API 密钥和签名。
+     * 支持两种格式：
+     * 1. Authorization: AccessKey:SecretKey
+     * 2. X-Access-Key: xxx / X-Secret-Key: xxx
      *
      * @param request HTTP 请求
      *
@@ -21,7 +26,20 @@ public class ApiKeyHandler {
         if (request == null) {
             return false;
         }
+
+        // 检查 Authorization 头
         String authorization = request.getHeader(AUTHORIZATION);
-        return !StringUtils.isBlank(authorization) && authorization.split(":").length >= 2;
+        if (!StringUtils.isBlank(authorization) && authorization.split(":").length >= 2) {
+            return true;
+        }
+
+        // 检查 X-Access-Key / X-Secret-Key 头
+        String accessKey = request.getHeader(X_ACCESS_KEY);
+        String secretKey = request.getHeader(X_SECRET_KEY);
+        if (!StringUtils.isBlank(accessKey) && !StringUtils.isBlank(secretKey)) {
+            return true;
+        }
+
+        return false;
     }
 }
